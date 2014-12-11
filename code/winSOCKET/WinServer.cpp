@@ -15,28 +15,28 @@ bool DefDealError(void* p,WinServerError Etype)
 	case WINSEV_E_MEM:		//内存申请出错
 		std::cout<<"内存申请出错"<<std::endl;
 		break;
-	case WINSEV_E_NOT_SUPPORT:		//内存申请出错
+	case WINSEV_E_NOT_SUPPORT:		
 		std::cout<<"暂时不支持"<<std::endl;
 		break;
-	case WINSEV_E_INIT_SOCK:		//内存申请出错
+	case WINSEV_E_INIT_SOCK:		
 		std::cout<<"初始化错误"<<std::endl;
 		break;
-	case WINSEV_E_SOCKET:		//内存申请出错
+	case WINSEV_E_SOCKET:		
 		std::cout<<"socket函数出错"<<std::endl;
 		break;
-	case WINSEV_E_BIND:		//内存申请出错
+	case WINSEV_E_BIND:		
 		std::cout<<"bind 函数出错"<<std::endl;
 		break;
-	case WINSEV_E_LISTEN:		//内存申请出错
+	case WINSEV_E_LISTEN:		
 		std::cout<<"listen 函数出错"<<std::endl;
 		break;
-	case WINSEV_E_ACCEPT:		//内存申请出错
+	case WINSEV_E_ACCEPT:		
 		std::cout<<"accept 函数出错"<<std::endl;
 		break;
-	case WINSEV_E_SELECT:		//内存申请出错
+	case WINSEV_E_SELECT:		
 		std::cout<<"select 函数出错"<<std::endl;
 		break;
-	case WINSEV_E_BEGINTHREAD:		//内存申请出错
+	case WINSEV_E_BEGINTHREAD:		
 		std::cout<<"开始新线程出错"<<std::endl;
 		break;
 	default:
@@ -63,8 +63,10 @@ DealManage::DealManage(SOCKET sock,DealSocket *p,UINT willFree):
 }
 DealManage::~DealManage()
 {
-	if (m_pDeal)
+	if ((m_FreeFlag&1) && m_pDeal)
+	{
 		delete m_pDeal;
+	}
 }
 dealSocketRtn DealManage::dealSend(){
 	m_State = m_pDeal->dealSend();
