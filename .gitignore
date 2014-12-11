@@ -26,3 +26,16 @@
 *.exe
 *.out
 *.app
+/Project2/Debug
+/Project2/fangFunc
+/Project2/Project1
+/Project2/Project2
+/Project2/test
+/Project2/test_process
+/Project2/thunk
+/Project2/Project2.opensdf
+/Project2/Project2.sdf
+/Project2/Project2.sln
+/Project2/Project2.v11.suo
+/Project2/Project2.zip
+/Project2/colMSG
