@@ -26,10 +26,6 @@ typedef enum{
 	,DEAL_ERROR_2	= 8 * 2	//错误2，增加错误加8
 }dealSocketRtn;//返回值
 
-enum{
-	WinServer_TCP
-	,WinServer_UDP
-};
 
 enum{
 	SEVER_WILL_CLOSE
