@@ -128,8 +128,6 @@ public://º¯Êý
 protected://º¯Êý
 	void Bind_AF_INET_AF_UNIX(ULONG ip, USHORT port);
 	inline void DEALERROR(WinServerError);
-	void Select();
-	void Thread();
 	void cleanSock(std::map<SOCKET,DealManage*>* mapClientSock = NULL);
 	
 };

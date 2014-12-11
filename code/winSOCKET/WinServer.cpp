@@ -427,7 +427,7 @@ void WinServerTCP::SetPORT(unsigned short u)
 /////////////////////////////////////UDP/////////////////////////
 WinServerUDP::WinServerUDP()
 {
-	m_port	=	htons(PORT_DEFAULT);	
+	m_port	=	htons(0);
 	m_ip	=	inet_addr(IP_DEFAULT);
 }
 bool WinServerUDP::Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port)
@@ -449,15 +449,20 @@ bool WinServerUDP::Work(std::function<DealSocket*()> dealSocketMkr)
 	{
 		DEALERROR(WINSEV_E_SOCKET);
 	}
-	switch (m_af)
+
+	if (m_port != 0)//设置了端口（不为0）才bind.UDP为无连接，所以连端口都没有bind,就不好奢望别人再能联系到你
 	{
-	case AF_INET:
-	case AF_UNIX:
-		Bind_AF_INET_AF_UNIX(m_ip,m_port);
-		break;
-	default:
-		throw WINSEV_E_NOT_SUPPORT;
+		switch (m_af)
+		{
+		case AF_INET:
+		case AF_UNIX:
+			Bind_AF_INET_AF_UNIX(m_ip,m_port);
+			break;
+		default:
+			throw WINSEV_E_NOT_SUPPORT;
+		}
 	}
+
 
 	Select();
 
