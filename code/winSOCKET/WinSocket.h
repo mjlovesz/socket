@@ -8,11 +8,12 @@ typedef enum{
 	WINSEV_E_MEM		//内存申请出错
 	,WINSEV_E_NOT_SUPPORT//暂时不支持
 	,WINSEV_E_INIT_SOCK	//初始化错误
-	,WINSEV_E_SOCKET	//socket函数出错
-	,WINSEV_E_BIND		//bind 函数出错
+	,WINSEV_E_SOCKET	//socket 函数出错
+	,WINSEV_E_BIND		//bind	 函数出错
 	,WINSEV_E_LISTEN	//listen 函数出错
 	,WINSEV_E_ACCEPT	//accept 函数出错
 	,WINSEV_E_SELECT	//select 函数出错
+	,WINSEV_E_CONNECT	//connect函数出错
 	,WINSEV_E_BEGINTHREAD//开始新线程出错
 }WinServerError;//抛出错误
 
@@ -101,14 +102,14 @@ public:
 
 
 /************************************************************************/
-/*	服务器类															
+/*	基类															
 /*																		
 /************************************************************************/
-class WinServer
+class WinSOCKETbase
 {
 public:
-	WinServer(void);//抛出INT错误
-	~WinServer(void);
+	WinSOCKETbase(void);//抛出INT错误
+	~WinSOCKETbase(void);
 protected://数据
 	SOCKET	m_sock;		//套接字的描述符
 	UINT	m_af;		//协议域	AF_UNIX(本地),AF_INET(IPv4),AF_INET6(IPv6),……
@@ -132,8 +133,12 @@ protected://函数
 	
 };
 
+/************************************************************************/
+/*	TCP服务器类															
+/*																		
+/************************************************************************/
 class WinServerTCP:
-	public WinServer
+	public WinSOCKETbase
 {
 public:
 	WinServerTCP(void);//抛出INT错误
@@ -145,10 +150,10 @@ private://数据
 
 public://函数
 	bool Work(std::function<DealSocket*()> dealSocketMkr);
-	bool Work(std::function<DealSocket*()> dealSocketMkr,bool isThread);//懒得搞智能指针，默认由此类帮助析构这个指针
-	bool Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port,bool isThread = false);//懒得搞智能指针，默认由此类帮助析构这个指针
-	void SetIP(LPCTSTR);
-	void SetPORT(unsigned short u);
+	bool Work(std::function<DealSocket*()> dealSocketMkr,bool isThread);
+	bool Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port,bool isThread = false);
+	void SetBindIP(LPCTSTR);
+	void SetBindPORT(unsigned short u);//默认端口是：80
 	void SetConnectNum(UINT u){m_connectNum = u;};
 
 protected://函数
@@ -157,9 +162,12 @@ protected://函数
 	static unsigned int WINAPI threadCallBack(LPVOID);
 
 };
-
+/************************************************************************/
+/*	UDP类															
+/*																		
+/************************************************************************/
 class WinServerUDP:
-	public WinServer
+	public WinSOCKETbase
 {
 public:
 	WinServerUDP(void);//抛出INT错误
@@ -171,8 +179,32 @@ private://数据
 public://函数
 	bool Work(std::function<DealSocket*()> dealSocketMkr);
 	bool Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port);
-	void SetIP(LPCTSTR);
-	void SetPORT(unsigned short u);
+	void SetBindIP(LPCTSTR);
+	void SetBindPORT(unsigned short u);//默认随机端口
+
+protected://函数
+	void Select();
+};
+
+/************************************************************************/
+/*	TCP客户端类															
+/*																		
+/************************************************************************/
+class WinClientTCP:
+	public WinSOCKETbase
+{
+public:
+	WinClientTCP(void);//抛出INT错误
+	~WinClientTCP(void){};
+private://数据
+	ULONG	m_Fip;		//ip
+	USHORT	m_Fport;		//port
+
+public://函数
+	bool Work(std::function<DealSocket*()> dealSocketMkr);
+	bool Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port);
+	void SetConectIP(LPCTSTR);
+	void SetConectPORT(unsigned short u);
 
 protected://函数
 	void Select();

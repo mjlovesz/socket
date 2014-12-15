@@ -5,7 +5,8 @@
 #include <set>
 #pragma comment(lib, "WS2_32")
 #define  PORT_DEFAULT 80
-#define  IP_DEFAULT "127.0.0.1"
+#define  CONNECT_PORT_DEFAULT 80
+#define  CONNECT_IP_DEFAULT "123.58.180.7"//163.com
 
 
 bool DefDealError(void* p,WinServerError Etype)
@@ -99,7 +100,7 @@ void DealManage::ChangeDeal(DealSocket* p,UINT willFree){
 	}
 }
 
-WinServer::WinServer(void)
+WinSOCKETbase::WinSOCKETbase(void)
 {
 	WSADATA  Ws;
 	if ( WSAStartup(MAKEWORD(2,2), &Ws) != 0 )
@@ -112,7 +113,7 @@ WinServer::WinServer(void)
 	m_State =	SEVER_CLOSED;
 }
 
-WinServer::~WinServer(void)
+WinSOCKETbase::~WinSOCKETbase(void)
 {
 	if (m_sock != INVALID_SOCKET)
 	{
@@ -122,7 +123,7 @@ WinServer::~WinServer(void)
 
 	WSACleanup();
 }
-void WinServer::cleanSock(std::map<SOCKET,DealManage*>* mapClientSock)
+void WinSOCKETbase::cleanSock(std::map<SOCKET,DealManage*>* mapClientSock)
 {
 	if (mapClientSock)
 	{	
@@ -141,7 +142,7 @@ void WinServer::cleanSock(std::map<SOCKET,DealManage*>* mapClientSock)
 	}
 }
 
-void WinServer::Bind_AF_INET_AF_UNIX(ULONG ip, USHORT port)
+void WinSOCKETbase::Bind_AF_INET_AF_UNIX(ULONG ip, USHORT port)
 {
 	struct sockaddr_in LocalAddr;
 	LocalAddr.sin_family = AF_INET;
@@ -156,12 +157,12 @@ void WinServer::Bind_AF_INET_AF_UNIX(ULONG ip, USHORT port)
 	}
 }
 
-void WinServer::DEALERROR(WinServerError e)
+void WinSOCKETbase::DEALERROR(WinServerError e)
 {
 	if(m_efunc && m_efunc(m_efuncParam,e))return;
 	throw e;//如果没有处理，就throw错误
 }
-void WinServer::close()
+void WinSOCKETbase::close()
 {
 	m_State = WM_CLOSE;
 }
@@ -169,8 +170,8 @@ void WinServer::close()
 /////////////////////////////////////////TCP/////////////////////
 WinServerTCP::WinServerTCP()
 {
-	m_port	=	htons(PORT_DEFAULT);	
-	m_ip	=	inet_addr(IP_DEFAULT);
+	m_port	=	htons(PORT_DEFAULT);
+	m_ip	=	INADDR_ANY;
 	m_connectNum =	11;
 }
 
@@ -180,8 +181,8 @@ bool WinServerTCP::Work(std::function<DealSocket*()> dealSocketMkr)
 }
 bool WinServerTCP::Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port,bool isThread)
 {
-	SetIP(ip);
-	SetPORT(port);
+	SetBindIP(ip);
+	SetBindPORT(port);
 	return Work(dealSocketMkr,isThread);
 }
 bool WinServerTCP::Work(std::function<DealSocket*()> dealSocketMkr, bool isThread)
@@ -414,12 +415,12 @@ unsigned int WINAPI WinServerTCP::threadCallBack(LPVOID pvoid)
 	return 0;
 }
 
-void WinServerTCP::SetIP(LPCTSTR pcstr)
+void WinServerTCP::SetBindIP(LPCTSTR pcstr)
 {
 	m_ip = inet_addr(pcstr);
 }
 
-void WinServerTCP::SetPORT(unsigned short u)
+void WinServerTCP::SetBindPORT(unsigned short u)
 {
 	m_port = htons(u);
 }
@@ -428,12 +429,12 @@ void WinServerTCP::SetPORT(unsigned short u)
 WinServerUDP::WinServerUDP()
 {
 	m_port	=	htons(0);
-	m_ip	=	inet_addr(IP_DEFAULT);
+	m_ip	=	INADDR_ANY;
 }
 bool WinServerUDP::Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port)
 {
-	SetIP(ip);
-	SetPORT(port);
+	SetBindIP(ip);
+	SetBindPORT(port);
 	return Work(dealSocketMkr);
 }
 bool WinServerUDP::Work(std::function<DealSocket*()> dealSocketMkr)
@@ -450,17 +451,15 @@ bool WinServerUDP::Work(std::function<DealSocket*()> dealSocketMkr)
 		DEALERROR(WINSEV_E_SOCKET);
 	}
 
-	if (m_port != 0)//设置了端口（不为0）才bind.UDP为无连接，所以连端口都没有bind,就不好奢望别人再能联系到你
+
+	switch (m_af)
 	{
-		switch (m_af)
-		{
-		case AF_INET:
-		case AF_UNIX:
-			Bind_AF_INET_AF_UNIX(m_ip,m_port);
-			break;
-		default:
-			throw WINSEV_E_NOT_SUPPORT;
-		}
+	case AF_INET:
+	case AF_UNIX:
+		Bind_AF_INET_AF_UNIX(m_ip,m_port);
+		break;
+	default:
+		throw WINSEV_E_NOT_SUPPORT;
 	}
 
 
@@ -505,12 +504,104 @@ void WinServerUDP::Select()//异步
 	}
 }
 
-void WinServerUDP::SetIP(LPCTSTR pcstr)
+void WinServerUDP::SetBindIP(LPCTSTR pcstr)
 {
 	m_ip = inet_addr(pcstr);
 }
 
-void WinServerUDP::SetPORT(unsigned short u)
+void WinServerUDP::SetBindPORT(unsigned short u)
 {
 	m_port = htons(u);
+}
+
+
+////////////////////////////////////TCPClient/////////////////////////
+WinClientTCP::WinClientTCP()
+{
+	m_Fport	=	htons(CONNECT_PORT_DEFAULT);
+	m_Fip	=	inet_addr(CONNECT_IP_DEFAULT);
+}
+bool WinClientTCP::Work(std::function<DealSocket*()> dealSocketMkr,LPCTSTR ip,unsigned short port)
+{
+	SetConectIP(ip);
+	SetConectPORT(port);
+	return Work(dealSocketMkr);
+}
+bool WinClientTCP::Work(std::function<DealSocket*()> dealSocketMkr)
+{
+	if (m_State != SEVER_CLOSED)
+	{
+		return false;
+	}
+	m_MakeDeal = dealSocketMkr;
+
+	m_sock = socket(m_af, SOCK_STREAM, IPPROTO_TCP);
+	if ( m_sock == INVALID_SOCKET )
+	{
+		DEALERROR(WINSEV_E_SOCKET);
+	}
+
+	//构建服务器地址信息  
+	struct sockaddr_in saServer;
+	saServer.sin_family = AF_INET; //地址家族  
+	saServer.sin_port = m_Fport; //注意转化为网络节序  
+	saServer.sin_addr.S_un.S_addr = m_Fip;  
+
+	//连接服务器 
+	if (connect(m_sock, (struct sockaddr *)&saServer, sizeof(saServer)) == SOCKET_ERROR)  
+	{  
+		DEALERROR(WINSEV_E_CONNECT);  
+		closesocket(m_sock); //关闭套接字
+		return false;
+	} 
+
+	Select();
+
+	return true;
+}
+void WinClientTCP::Select()//异步
+{
+	int Ret;
+	struct timeval tv = {0, 50};/*反应老快了*/
+	fd_set readFd,writeFd;
+	DealManage *pDM = new DealManage(m_sock,m_MakeDeal());
+	while (true)
+	{
+		if (m_State == SEVER_WILL_CLOSE || (pDM->GetState() & DEAL_CLOSE))
+		{
+			delete pDM;
+			m_State = SEVER_CLOSED;
+			break;
+		}
+		FD_ZERO(&readFd);
+		FD_ZERO(&writeFd);
+		if (pDM->GetState()&DEAL_GO_ON_RECV)
+		{
+			FD_SET(m_sock,&readFd);
+		}
+		if (pDM->GetState()&DEAL_GO_ON_SEND)
+		{
+			FD_SET(m_sock,&writeFd);
+		}
+
+		Ret = select(NULL, &readFd, &writeFd, NULL, &tv);
+		if (FD_ISSET(m_sock,&readFd) && pDM)
+		{
+			pDM->dealRecv();
+		}
+		if (FD_ISSET(m_sock,&writeFd) && pDM)
+		{
+			pDM->dealSend();
+		}
+	}
+}
+
+void WinClientTCP::SetConectIP(LPCTSTR pcstr)
+{
+	m_Fip = inet_addr(pcstr);
+}
+
+void WinClientTCP::SetConectPORT(unsigned short u)
+{
+	m_Fport = htons(u);
 }
