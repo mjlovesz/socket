@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 using namespace std;
-#include "WinServer.h"
+#include "WinSocket.h"
 
 class SendRecv:public DealSocket
 {
