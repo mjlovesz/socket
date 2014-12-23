@@ -99,7 +99,7 @@ L_UINT L_MD5::XX(L_UINT& W,L_UINT X,L_UINT Y,L_UINT Z,L_UINT Mj,L_UINT s,L_UINT 
 	return W = X + rotate_left((W + x(X,Y,Z) + Mj + ti), s);
 }
 
-inline void	L_MD5::One512(L_UINT* ABCD,L_UINT* u16_32)
+void L_MD5::One512(L_UINT* ABCD,L_UINT* u16_32)
 {
 	L_UINT ABCDtmp[4];
 	memmove(ABCDtmp,ABCD,sizeof(L_UINT) * 4);
@@ -183,3 +183,75 @@ void L_MD5::calMD5(char* out, char * in, L_UINT64 size)
 	for (int i = 0; i < sizeof(L_UINT) * 4 / sizeof(char); ++i)
 		sprintf_s (out + i * 2, 3, "%02x", cABCD[i]);
 }
+
+namespace  L_SHA1
+{
+	static inline L_UINT J(L_UINT,L_UINT,L_UINT);
+	inline void	One512(L_UINT* ABCDE,L_UINT* u16_32);
+	static const L_UINT K[] = {0x5A827999,0x6ED9EBA1,0x8F1BBCDC,0xCA62C1D6};
+};
+
+L_UINT L_SHA1::J(L_UINT X,L_UINT Y,L_UINT Z)
+{
+	return (X&Y)|(X&Z)|(Y&Z);
+}
+
+inline void	L_SHA1::One512(L_UINT* ABCDE,L_UINT* u16_32)
+{
+	L_UINT ABCDEtmp[5];
+	memmove(ABCDEtmp,ABCDE,sizeof(L_UINT) * 5);
+	L_UINT W[80];
+	memmove(W,u16_32,sizeof(L_UINT) * 16);
+	for (int i = 16; i < 80; ++i)
+	{
+		W[i] = L_MD5::rotate_left(1,(W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16]));
+	}
+	fX x[4]={L_MD5::F,L_MD5::H,J,L_MD5::H};
+	L_UINT TEMP;
+	for (int i = 0; i < 4; ++i)//FGHI
+	{
+		for (int j = 0; j < 20; ++j)
+		{
+			TEMP = L_MD5::rotate_left(5,ABCDEtmp[0])
+				+ x[i](ABCDEtmp[1],ABCDEtmp[2],ABCDEtmp[3]) + ABCDEtmp[4] + W[i * 20 + j] + K[i];
+			ABCDEtmp[4] = ABCDEtmp[3];  ABCDEtmp[3] = ABCDEtmp[2];  ABCDEtmp[2] = L_MD5::rotate_left(30,ABCDEtmp[1]);
+			ABCDEtmp[1] = ABCDEtmp[0];  ABCDEtmp[0] = TEMP;
+		}
+	}
+
+
+	ABCDE[0] += ABCDEtmp[0];
+	ABCDE[1] += ABCDEtmp[1];
+	ABCDE[2] += ABCDEtmp[2];
+	ABCDE[3] += ABCDEtmp[3];
+	ABCDE[4] += ABCDEtmp[4];
+}
+
+void L_SHA1::calSHA1(char* out, char * in, unsigned long long size)
+{
+	L_UINT64 llsize = size;
+
+	L_UINT ABCDE[5]={0x67452301,0xEFCDAB89,0x98BADCFE,0x10325476,0xC3D2E1F0};
+	L_UINT8 * cABCDE = (L_UINT8 *)ABCDE;
+	L_UINT* uIN = (L_UINT*)in;
+	while (llsize >= 64 / sizeof(L_UINT8))
+	{
+		One512(ABCDE,uIN);
+		uIN += 64 / sizeof(L_UINT);
+		llsize -= 64 / sizeof(L_UINT8);
+	}
+	L_UINT uOut[32]={0};
+	llsize = L_MD5::FillMD5(uOut, (L_UINT8*)uIN, (L_UINT)llsize, size);
+	uIN = uOut;
+	while (llsize >= 64 / sizeof(L_UINT8))
+	{
+		One512(ABCDE,uIN);
+		uIN += 64 / sizeof(L_UINT);
+		llsize -= 64 / sizeof(L_UINT8);
+	}
+
+	//out = (char*)realloc(out,33);//传进来要保证长度大于32
+	for (int i = 0; i < sizeof(L_UINT) * 5 / sizeof(char); ++i)
+		sprintf_s (out + i * 2, 3, "%02x", cABCDE[i]);
+}
+
